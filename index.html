@@ -25,11 +25,14 @@
 <body class="container py-4">
   <h1 class="mb-4">Wildlife Search</h1>
 
-  <div class="input-group mb-3">
-    <input type="text" id="query" class="form-control" placeholder="Enter species name" />
-    <button class="btn btn-primary" onclick="startSearch()">Search</button>
-  </div>
   <div id="resultCount" class="mb-3 fw-semibold"></div>
+  <div class="position-relative mb-3">
+    <input type="text" id="query" class="form-control" placeholder="Enter species name" oninput="fetchSuggestions()">
+    <ul id="suggestions" class="list-group position-absolute w-100 z-3" style="top:100%; max-height: 200px; overflow-y: auto;"></ul>
+    
+  </div>
+  
+
 
   <div id="results" class="row"></div>
 
@@ -98,7 +101,38 @@
         document.getElementById('pageInfo').textContent = `Page ${currentPage}`;
         }
 
-  
+        async function fetchSuggestions() {
+            const input = document.getElementById('query');
+            const suggestionsList = document.getElementById('suggestions');
+            const query = input.value.trim();
+
+            if (query.length < 2) {
+                suggestionsList.innerHTML = '';
+                return;
+            }
+
+            const response = await fetch(`https://api.inaturalist.org/v1/taxa/autocomplete?q=${query}`);
+            const data = await response.json();
+
+            suggestionsList.innerHTML = '';
+            data.results.slice(0, 10).forEach(taxon => {
+                const item = document.createElement('li');
+                item.className = 'list-group-item list-group-item-action';
+                item.textContent = taxon.name;
+                item.onclick = () => {
+                input.value = taxon.name;
+                suggestionsList.innerHTML = '';
+                startSearch();
+                };
+                suggestionsList.appendChild(item);
+            });
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!document.getElementById('query').contains(e.target)) {
+                document.getElementById('suggestions').innerHTML = '';
+            }
+        });
 
   </script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
