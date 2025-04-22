@@ -117,8 +117,16 @@
             suggestionsList.innerHTML = '';
             data.results.slice(0, 10).forEach(taxon => {
                 const item = document.createElement('li');
-                item.className = 'list-group-item list-group-item-action';
-                item.textContent = taxon.name;
+                item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
+
+                // Get square image if available
+                const imgSrc = taxon.default_photo?.square_url || 'https://via.placeholder.com/40?text=?';
+
+                item.innerHTML = `
+                <img src="${imgSrc}" alt="${taxon.name}" width="40" height="40" class="rounded" loading="lazy">
+                <span>${taxon.name}</span>
+                `;
+
                 item.onclick = () => {
                 input.value = taxon.name;
                 suggestionsList.innerHTML = '';
@@ -127,6 +135,7 @@
                 suggestionsList.appendChild(item);
             });
         }
+
 
         document.addEventListener('click', (e) => {
             if (!document.getElementById('query').contains(e.target)) {
