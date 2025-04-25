@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Flora and Fauna Search</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -20,11 +21,16 @@
       height: 250px;
       object-fit: cover;
     }
+    #map {
+      height: 400px;
+      margin-top: 40px;
+      border-radius: 12px;
+    }
   </style>
 </head>
 <body class="container py-4">
   <h1 class="mb-4">Flora and Fauna Search</h1>
-  
+
   <div id="resultCount" class="mb-3 fw-semibold"></div>
   <div class="position-relative mb-3">
     <input type="text" id="query" class="form-control" placeholder="Enter species name" oninput="fetchSuggestions()">
@@ -36,8 +42,10 @@
     <span id="pageInfo" class="mx-2"></span>
     <button class="btn btn-outline-secondary ms-2" onclick="changePage(1)">Next</button>
   </div>
-  
-  <div style="margin-top: 20px" id="results" class="row"></div>
+
+  <div id="results" class="row mt-4"></div>
+
+  <div id="map" class="my-4"></div>
 
   <!-- Observation Details Modal -->
   <div class="modal fade" id="observationModal" tabindex="-1" aria-labelledby="observationModalLabel" aria-hidden="true">
@@ -58,9 +66,14 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
   <script>
     let currentPage = 1;
     let currentQuery = '';
+    let map;
+    let markersLayer;
 
     async function startSearch() {
       currentPage = 1;
@@ -91,22 +104,25 @@
         return;
       }
 
+      // Clear map
+      if (markersLayer) {
+        markersLayer.clearLayers();
+      } else {
+        markersLayer = L.layerGroup().addTo(getMap());
+      }
+
+      let firstCoord;
+
       data.results.forEach(obs => {
         const div = document.createElement('div');
         div.className = 'col-md-4 mb-4';
 
         const imgUrl = obs.photos?.[0]?.url?.replace('square', 'medium') || '';
-
         const safeObsData = JSON.stringify(obs).replace(/'/g, "&apos;");
 
         div.innerHTML = `
           <div class="card h-100 shadow-sm observation-card" data-obs='${safeObsData}'>
-            <img 
-              src="${imgUrl}" 
-              class="card-img-top" 
-              alt="Observation Image" 
-              loading="lazy"
-            >
+            <img src="${imgUrl}" class="card-img-top" alt="Observation Image" loading="lazy">
             <div class="card-body">
               <h5 class="card-title">${obs.taxon?.name || 'Unknown'}</h5>
               <p class="card-text">Observed at: ${obs.place_guess || 'Unknown location'}</p>
@@ -114,9 +130,37 @@
           </div>
         `;
         resultsDiv.appendChild(div);
+
+        // Add marker to map if coordinates available
+        if (obs.geojson?.coordinates) {
+          const [lng, lat] = obs.geojson.coordinates;
+          const marker = L.marker([lat, lng]).bindPopup(`
+            <strong>${obs.taxon?.name || 'Unknown'}</strong><br/>
+            ${obs.place_guess || 'Unknown location'}
+          `);
+          markersLayer.addLayer(marker);
+          if (!firstCoord) {
+            firstCoord = [lat, lng];
+          }
+        }
       });
 
+      if (firstCoord) {
+        getMap().setView(firstCoord, 5);
+      }
+
       document.getElementById('pageInfo').textContent = `Page ${currentPage}`;
+    }
+
+    function getMap() {
+      if (!map) {
+        map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '© OpenStreetMap'
+        }).addTo(map);
+      }
+      return map;
     }
 
     async function fetchSuggestions() {
@@ -165,7 +209,6 @@
       }
     });
 
-    // Event listener for observation card click
     document.addEventListener('click', function (e) {
       const card = e.target.closest('.observation-card');
       if (!card) return;
@@ -182,7 +225,5 @@
       modal.show();
     });
   </script>
-
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
