@@ -24,7 +24,7 @@
 </head>
 <body class="container py-4">
   <h1 class="mb-4">Flora and Fauna Search</h1>
-
+  
   <div id="resultCount" class="mb-3 fw-semibold"></div>
   <div class="position-relative mb-3">
     <input type="text" id="query" class="form-control" placeholder="Enter species name" oninput="fetchSuggestions()">
@@ -37,8 +37,26 @@
     <button class="btn btn-outline-secondary ms-2" onclick="changePage(1)">Next</button>
   </div>
   
-  <div style="margin-top: 20px"
-  id="results" class="row"></div>
+  <div style="margin-top: 20px" id="results" class="row"></div>
+
+  <!-- Observation Details Modal -->
+  <div class="modal fade" id="observationModal" tabindex="-1" aria-labelledby="observationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="observationModalLabel">Observation Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <img id="modalImage" src="" alt="Observation" class="img-fluid mb-3 rounded">
+          <h5 id="modalScientificName"></h5>
+          <p id="modalCommonName" class="text-muted"></p>
+          <p id="modalLocation"></p>
+          <p id="modalDate"></p>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     let currentPage = 1;
@@ -57,97 +75,114 @@
     }
 
     async function searchObservations() {
-        if (!currentQuery) return;
+      if (!currentQuery) return;
 
-        const response = await fetch(`https://api.inaturalist.org/v1/observations?taxon_name=${currentQuery}&per_page=9&page=${currentPage}`);
-        const data = await response.json();
+      const response = await fetch(`https://api.inaturalist.org/v1/observations?taxon_name=${currentQuery}&per_page=9&page=${currentPage}`);
+      const data = await response.json();
 
-        const resultsDiv = document.getElementById('results');
-        const resultCountDiv = document.getElementById('resultCount');
-        resultsDiv.innerHTML = '';
+      const resultsDiv = document.getElementById('results');
+      const resultCountDiv = document.getElementById('resultCount');
+      resultsDiv.innerHTML = '';
 
-        resultCountDiv.textContent = `Total Results: ${data.total_results} (Page ${currentPage})`;
+      resultCountDiv.textContent = `Total Results: ${data.total_results} (Page ${currentPage})`;
 
-        if (data.results.length === 0) {
-            resultsDiv.innerHTML = `<p class="text-muted">No results found.</p>`;
-            return;
-        }
+      if (data.results.length === 0) {
+        resultsDiv.innerHTML = `<p class="text-muted">No results found.</p>`;
+        return;
+      }
 
-        data.results.forEach(obs => {
-            const div = document.createElement('div');
-            div.className = 'col-md-4 mb-4';
-            
-            const imgUrl = obs.photos?.[0]?.url?.replace('square', 'medium') || '';
+      data.results.forEach(obs => {
+        const div = document.createElement('div');
+        div.className = 'col-md-4 mb-4';
 
-            div.innerHTML = `
-            <div class="card h-100 shadow-sm">
-                <img 
-                src="${imgUrl}" 
-                class="card-img-top" 
-                alt="Observation Image" 
-                loading="lazy"
-                >
-                <div class="card-body">
-                <h5 class="card-title">${obs.taxon?.name || 'Unknown'}</h5>
-                <p class="card-text">Observed at: ${obs.place_guess || 'Unknown location'}</p>
-                </div>
+        const imgUrl = obs.photos?.[0]?.url?.replace('square', 'medium') || '';
+
+        const safeObsData = JSON.stringify(obs).replace(/'/g, "&apos;");
+
+        div.innerHTML = `
+          <div class="card h-100 shadow-sm observation-card" data-obs='${safeObsData}'>
+            <img 
+              src="${imgUrl}" 
+              class="card-img-top" 
+              alt="Observation Image" 
+              loading="lazy"
+            >
+            <div class="card-body">
+              <h5 class="card-title">${obs.taxon?.name || 'Unknown'}</h5>
+              <p class="card-text">Observed at: ${obs.place_guess || 'Unknown location'}</p>
             </div>
-            `;
-            resultsDiv.appendChild(div);
-        });
+          </div>
+        `;
+        resultsDiv.appendChild(div);
+      });
 
-        document.getElementById('pageInfo').textContent = `Page ${currentPage}`;
-        }
+      document.getElementById('pageInfo').textContent = `Page ${currentPage}`;
+    }
 
-        async function fetchSuggestions() {
-            const input = document.getElementById('query');
-            const suggestionsList = document.getElementById('suggestions');
-            const query = input.value.trim();
+    async function fetchSuggestions() {
+      const input = document.getElementById('query');
+      const suggestionsList = document.getElementById('suggestions');
+      const query = input.value.trim();
 
-            if (query.length < 2) {
-                suggestionsList.innerHTML = '';
-                return;
-            }
+      if (query.length < 2) {
+        suggestionsList.innerHTML = '';
+        return;
+      }
 
-            const response = await fetch(`https://api.inaturalist.org/v1/taxa/autocomplete?q=${query}`);
-            const data = await response.json();
+      const response = await fetch(`https://api.inaturalist.org/v1/taxa/autocomplete?q=${query}`);
+      const data = await response.json();
 
-            suggestionsList.innerHTML = '';
-            data.results.slice(0, 10).forEach(taxon => {
-                const item = document.createElement('li');
-                item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
+      suggestionsList.innerHTML = '';
+      data.results.slice(0, 10).forEach(taxon => {
+        const item = document.createElement('li');
+        item.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
 
-                const imgSrc = taxon.default_photo?.square_url || 'https://via.placeholder.com/40?text=?';
-                const commonName = taxon.preferred_common_name || '';
-                const sciName = taxon.name;
+        const imgSrc = taxon.default_photo?.square_url || 'https://via.placeholder.com/40?text=?';
+        const commonName = taxon.preferred_common_name || '';
+        const sciName = taxon.name;
 
-                item.innerHTML = `
-                <img src="${imgSrc}" alt="${sciName}" width="40" height="40" class="rounded" loading="lazy">
-                <div class="text-start">
-                    <div><strong>${commonName}</strong></div>
-                    <div class="text-muted"><small>${sciName}</small></div>
-                </div>
-                `;
+        item.innerHTML = `
+          <img src="${imgSrc}" alt="${sciName}" width="40" height="40" class="rounded" loading="lazy">
+          <div class="text-start">
+            <div><strong>${commonName}</strong></div>
+            <div class="text-muted"><small>${sciName}</small></div>
+          </div>
+        `;
 
-                item.onclick = () => {
-                input.value = sciName;
-                suggestionsList.innerHTML = '';
-                startSearch();
-                };
+        item.onclick = () => {
+          input.value = sciName;
+          suggestionsList.innerHTML = '';
+          startSearch();
+        };
 
-                suggestionsList.appendChild(item);
-            });
-        }
+        suggestionsList.appendChild(item);
+      });
+    }
 
+    document.addEventListener('click', (e) => {
+      if (!document.getElementById('query').contains(e.target)) {
+        document.getElementById('suggestions').innerHTML = '';
+      }
+    });
 
+    // Event listener for observation card click
+    document.addEventListener('click', function (e) {
+      const card = e.target.closest('.observation-card');
+      if (!card) return;
 
-        document.addEventListener('click', (e) => {
-            if (!document.getElementById('query').contains(e.target)) {
-                document.getElementById('suggestions').innerHTML = '';
-            }
-        });
+      const obs = JSON.parse(card.getAttribute('data-obs').replace(/&apos;/g, "'"));
 
+      document.getElementById('modalImage').src = obs.photos?.[0]?.url?.replace('square', 'large') || '';
+      document.getElementById('modalScientificName').textContent = obs.taxon?.name || 'Unknown';
+      document.getElementById('modalCommonName').textContent = obs.taxon?.preferred_common_name || '';
+      document.getElementById('modalLocation').textContent = `Location: ${obs.place_guess || 'Unknown'}`;
+      document.getElementById('modalDate').textContent = `Observed on: ${new Date(obs.observed_on).toDateString() || 'N/A'}`;
+
+      const modal = new bootstrap.Modal(document.getElementById('observationModal'));
+      modal.show();
+    });
   </script>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
