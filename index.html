@@ -151,13 +151,20 @@ async function searchObservations() {
     div.className = 'col-12';
     div.innerHTML = `
       <div class="card h-100 shadow-sm" onclick='showModal(${JSON.stringify(obs).replace(/'/g, "\\'")})'>
-        <img src="${imgUrl}" class="card-img-top" alt="Observation Image" loading="lazy">
-        <div class="card-body">
-          <h5 class="card-title">${obs.taxon?.name || 'Unknown'}</h5>
-          <p class="card-text">Observed at: ${obs.place_guess || 'Unknown location'}</p>
+        <div class="row g-0">
+          <div class="col-3">
+            <img src="${imgUrl}" class="img-fluid rounded-start h-100 object-fit-cover" alt="Observation Image" loading="lazy">
+          </div>
+          <div class="col-9">
+            <div class="card-body">
+              <h5 class="card-title mb-1">${obs.taxon?.name || 'Unknown'}</h5>
+              <p class="card-text mb-0 text-muted">${obs.place_guess || 'Unknown location'}</p>
+            </div>
+          </div>
         </div>
       </div>
     `;
+
     resultsDiv.appendChild(div);
   });
 
