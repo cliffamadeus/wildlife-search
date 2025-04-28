@@ -4,14 +4,33 @@ let map;
 let markerClusterGroup;
 
 document.addEventListener('DOMContentLoaded', () => {
-  map = L.map('map').setView([12, 122], 3);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  // Base Layers
+  const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
     attribution: '© OpenStreetMap contributors'
-  }).addTo(map);
+  });
 
+  const satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    maxZoom: 18,
+    attribution: '© Satellite imagery by Maps.com'
+  });
+
+  // Initialize Map
+  map = L.map('map', {
+    center: [12, 122],
+    zoom: 3,
+    layers: [osmLayer]  // Default to OpenStreetMap layer
+  });
+
+  // Marker Cluster Group
   markerClusterGroup = L.markerClusterGroup();
   map.addLayer(markerClusterGroup);
+
+  // Add Layer Control
+  L.control.layers({
+    "OpenStreetMap": osmLayer,
+    "Satellite": satelliteLayer
+  }).addTo(map);
 });
 
 async function startSearch() {
@@ -73,6 +92,7 @@ async function searchObservations() {
         </div>
       </div>
     `;
+
     resultsDiv.appendChild(div);
   });
 
@@ -89,10 +109,7 @@ async function searchObservations() {
     }
   });
 
-  if (firstCoord) {
-    map.setView(firstCoord, 2);
-  }
-
+  if (firstCoord) map.setView(firstCoord, 2);
   document.getElementById('pageInfo').textContent = `Page ${currentPage}`;
 }
 
@@ -102,7 +119,6 @@ function showModal(obs) {
   document.getElementById('modalCommonName').textContent = obs.taxon?.preferred_common_name || '';
   document.getElementById('modalLocation').textContent = `Location: ${obs.place_guess || 'Unknown'}`;
   document.getElementById('modalDate').textContent = `Observed on: ${new Date(obs.observed_on).toDateString() || 'N/A'}`;
-
   new bootstrap.Modal(document.getElementById('observationModal')).show();
 }
 
@@ -110,7 +126,6 @@ async function fetchSuggestions() {
   const input = document.getElementById('query');
   const list = document.getElementById('suggestions');
   const query = input.value.trim();
-
   if (query.length < 2) {
     list.innerHTML = '';
     return;
@@ -119,7 +134,6 @@ async function fetchSuggestions() {
   const res = await fetch(`https://api.inaturalist.org/v1/taxa/autocomplete?q=${query}`);
   const data = await res.json();
   list.innerHTML = '';
-
   data.results.slice(0, 10).forEach(taxon => {
     const li = document.createElement('li');
     li.className = 'list-group-item list-group-item-action d-flex align-items-center gap-2';
