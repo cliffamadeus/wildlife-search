@@ -1,1 +1,1 @@
-# This site was powered by the iNaturalist API
+# This app was powered by the iNaturalist API
